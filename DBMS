@@ -1,0 +1,24 @@
+-- This SQL statement creates the 'transactions' table for the finance tracker application.
+
+CREATE TABLE transactions (
+    -- transaction_id is the primary key to uniquely identify each transaction.
+    -- VARCHAR(255) is used to accommodate universally unique identifiers (UUIDs).
+    transaction_id VARCHAR(255) PRIMARY KEY,
+
+    -- transaction_date stores the date of the transaction.
+    -- The NOT NULL constraint ensures that every transaction must have a date.
+    transaction_date DATE NOT NULL,
+
+    -- description provides a space for a detailed note about the transaction.
+    -- TEXT allows for long, variable-length descriptions.
+    description TEXT,
+
+    -- amount stores the monetary value of the transaction.
+    -- DECIMAL(10, 2) is ideal for financial data, allowing for up to 10 digits with 2 decimal places.
+    -- The NOT NULL constraint ensures that every transaction must have an amount.
+    amount DECIMAL(10, 2) NOT NULL,
+
+    -- type categorizes the transaction as either 'Revenue' or 'Expense'.
+    -- The NOT NULL constraint ensures that every transaction is properly categorized.
+    type VARCHAR(20) NOT NULL
+);
