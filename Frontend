@@ -1,0 +1,94 @@
+import streamlit as st
+from datetime import date
+from backend_fin import FinanceDB
+import uuid
+import pandas as pd
+
+# must be first Streamlit command
+st.set_page_config(page_title="Finance: Revenue & Expense Tracker", layout="wide")
+
+# Database connection details
+DB_NAME = "Fin_tracker"
+DB_USER = "postgres"
+DB_PASSWORD = "root"
+
+# Initialize the database connection (should only be done once)
+@st.cache_resource
+def get_db_connection():
+    try:
+        return FinanceDB(dbname=DB_NAME, user=DB_USER, password=DB_PASSWORD)
+    except Exception as e:
+        st.error(f"Failed to connect to the database: {e}")
+        st.stop()
+
+db = get_db_connection()
+
+st.title("💰 Finance: Revenue & Expense Tracker")
+
+# -----------------
+# Business Insights Section
+# -----------------
+st.header("Business Insights")
+insights = db.get_aggregations()
+if insights:
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric(label="Total Transactions", value=insights['total_transactions'])
+    with col2:
+        st.metric(label="Total Revenue", value=f"${insights['total_revenue']:,.2f}")
+    with col3:
+        st.metric(label="Total Expense", value=f"${insights['total_expense']:,.2f}")
+    with col4:
+        st.metric(label="Net Income (Revenue - Expense)", value=f"${insights['net_income']:,.2f}")
+st.markdown("---")
+
+# -----------------
+# Add Transaction Section (CREATE)
+# -----------------
+st.header("Add New Transaction")
+with st.form(key='add_transaction_form', clear_on_submit=True):
+    transaction_id = str(uuid.uuid4())
+    transaction_date = st.date_input("Date", value=date.today())
+    description = st.text_area("Description", max_chars=255)
+    amount = st.number_input("Amount", min_value=0.01, format="%.2f")
+    type_ = st.selectbox("Type", ["Revenue", "Expense"])
+    submit_button = st.form_submit_button(label='Add Transaction')
+
+    if submit_button:
+        if description and amount > 0:
+            success = db.add_transaction(transaction_id, transaction_date, description, amount, type_)
+            if success:
+                st.success("Transaction added successfully!")
+                st.rerun()
+            else:
+                st.error("Failed to add transaction. Check database connection.")
+        else:
+            st.warning("Please fill in all fields correctly.")
+st.markdown("---")
+
+# -----------------
+# View Transactions Section (READ & Filtering & Sorting)
+# -----------------
+st.header("All Transactions")
+
+col_filter, col_sort, col_order = st.columns(3)
+with col_filter:
+    filter_type = st.selectbox("Filter by Type", ["All", "Revenue", "Expense"])
+with col_sort:
+    sort_by = st.selectbox("Sort by", ["transaction_date", "amount"])
+with col_order:
+    sort_order = st.selectbox("Sort Order", ["DESC", "ASC"])
+
+if filter_type == "All":
+    transactions = db.get_transactions(sort_by=sort_by, sort_order=sort_order)
+else:
+    transactions = db.get_transactions(transaction_type=filter_type, sort_by=sort_by, sort_order=sort_order)
+
+if transactions:
+    st.subheader(f"{filter_type} Transactions")
+    df = pd.DataFrame(transactions, columns=['Transaction ID', 'Date', 'Description', 'Amount', 'Type'])
+    st.dataframe(df.set_index('Transaction ID'), use_container_width=True)
+else:
+    st.info("No transactions found.")
+
+st.markdown("---")
